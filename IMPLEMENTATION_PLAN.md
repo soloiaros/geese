@@ -1,52 +1,49 @@
-# Implementation Plan: Interactive 3D Web Page - Phase 2
+# Implementation Plan: Replacing Sphere with Animated Goose
 
-This document outlines the implementation plan for the second phase of the interactive 3D web page, focusing on precise 3D plane positioning, text visibility, and dynamic text wrapping around a 3D object using the `pretext` library.
+## Overview
+The objective is to replace the simple 3D sphere primitive in the React Three Fiber scene with a glTF 2.0 animated model of a goose (`goose.glb`). The model will follow the cursor, play its moving animation only while in motion, and always face its direction of movement. Crucially, the text wrapping logic handled by the `@chenglou/pretext` npm module must remain perfectly intact and unaffected by this visual change.
 
-## 1. Text Visibility and Layering
+## Step-by-Step Implementation Steps
 
-**Goal:** Ensure the text is pure white and clearly visible above the 3D scene.
+### 1. Import Necessary Hooks and the Model
+- In `src/components/Scene.jsx`, import `useGLTF` and `useAnimations` from `@react-three/drei`.
+- Import the model URL using Vite's asset handling: `import gooseModelUrl from '../assets/3d/goose.glb'`.
 
-*   **Action:** Update the CSS for the text container (e.g., `.text-overlay`) and the text components.
-*   **Implementation:**
-    *   Set the text color explicitly to white: `color: #ffffff;`.
-    *   Ensure the `.text-overlay` has a higher `z-index` than the canvas container.
-    *   Optionally add a subtle `text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.8);` to guarantee the white text remains legible even if the 3D sphere passes directly behind it and shares a light color.
+### 2. Create the `Goose` Component
+- Replace the existing `Sphere` component definition in `Scene.jsx` with a new `Goose` component.
+- The `Goose` component will receive the identical props as the Sphere: `targetPosition` and `setSpherePosition2D`.
+- Create a `ref` (e.g., `groupRef`) to hold the model's group for position and rotation updates.
+- Load the model using the hook: `const { scene, animations } = useGLTF(gooseModelUrl)`.
+- Extract animations using the hook: `const { actions, names } = useAnimations(animations, groupRef)`.
 
-## 2. Precise Panel Positioning (Frustum Alignment)
+### 3. Implement Movement and Rotation Logic
+- Inside the `Goose` component, utilize the `useFrame` hook to update position and rotation on every frame.
+- **Positioning:** Retain the current lerp logic for smooth movement: `groupRef.current.position.lerp(targetVec, 5 * delta)`.
+- **Direction & Rotation:**
+  - Calculate the difference vector between the current position and the `targetVec` to determine the direction of movement.
+  - If the distance (or squared length) of this vector is greater than a small epsilon (e.g., `0.001`), the object is considered "moving".
+  - Calculate the target rotation angle using `Math.atan2(direction.x, direction.z)`.
+  - Create a target quaternion from this angle and smoothly interpolate (`slerp`) the goose's current quaternion towards it. This ensures realistic, smooth turning.
+  - If the distance is below the threshold (not moving), the rotation logic is bypassed, ensuring the goose preserves the exact rotation point it stopped at.
 
-**Goal:** Position the 3D panel so its farthest points exactly match the top-left and top-right corners of the screen. The closest points will naturally stretch beyond the screen limits on the X-axis due to perspective.
+### 4. Implement Animation Logic
+- Inside the same `useFrame` hook (or a `useEffect` if tracking a state, though `useFrame` is more synchronized), control the animation state based on movement.
+- Retrieve the primary animation action (e.g., `const action = actions[names[0]]`).
+- **When Moving:** If the distance to the target is above the threshold, ensure the action is playing (`action.play()`).
+- **When Stopped:** If the distance falls below the threshold, halt the animation and reset it to frame 0 (e.g., `action.stop()` or setting `action.paused = true; action.time = 0;`).
 
-*   **Concept:** We need to calculate the exact dimensions and position of a plane on the XZ axis (`Y=0`) so that its far edge aligns with the top of the camera's view frustum.
-*   **Implementation steps:**
-    1.  **Raycasting from Screen Corners:** Inside the `Scene` component, use the camera to unproject the Normalized Device Coordinates (NDC) of the screen's top corners (`[-1, 1, 0]` and `[1, 1, 0]`) and bottom corners (`[-1, -1, 0]` and `[1, -1, 0]`).
-    2.  **Intersection with Ground Plane:** Cast mathematical rays from the camera's position through these unprojected points to see where they intersect the `Y=0` plane.
-    3.  **Calculate Dimensions:**
-        *   The distance between the top-left and top-right intersections determines the exact **width** of the panel's far edge.
-        *   The Z-distance between the top intersections and bottom intersections determines the **depth** (height) of the panel.
-    4.  **Apply to Geometry:** Create a standard `<planeGeometry args={[width, depth]}>` (or use a custom trapezoid/custom plane if we want a standard rectangle that stretches out) and position it so the far edge rests exactly on the Z-coordinate of the top intersections.
-    5.  *Result:* The plane will perfectly fill the screen vertically, its top edge will perfectly align with the top corners, and its bottom edge will be wider than the screen.
+### 5. Preserve Text Wrapping (`pretext` Integration)
+- The existing `setSpherePosition2D` callback MUST be preserved exactly as it is to maintain the text wrapping functionality.
+- Within `useFrame` of the `Goose` component, perform the same NDC (Normalized Device Coordinates) projection:
+  - Project `groupRef.current.position` to screen space to obtain `vec.x` and `vec.y`.
+  - Retain the `radius3D = 0.5` logic (or closely approximate the goose's bounding box size if necessary) to calculate `radiusNDC`. 
+  - Call `setSpherePosition2D({ x: vec.x, y: vec.y, r: radiusNDC })` just like the `Sphere` component did. By keeping this identical, the `pretext` logic in `App.jsx` will continue to work flawlessly.
 
-## 3. Dynamic Text Wrapping (Avoid Intersection)
+### 6. Update the Scene Integration
+- In the `Scene` component's return statement, replace `<Sphere targetPosition={targetPosition} setSpherePosition2D={setSpherePosition2D} />` with `<Goose targetPosition={targetPosition} setSpherePosition2D={setSpherePosition2D} />`.
+- Optionally, adjust the initial `position` or `scale` on the `<primitive object={scene} />` inside the `Goose` component if the imported model's default scale or origin differs significantly from the 1x1x1 sphere.
 
-**Goal:** The text must wrap around the sphere. The sphere should never intersect the text; instead, the text lines should adjust their layout to avoid the sphere's 2D projected area.
-
-*   **Concept:** Instead of just shrinking the entire column's `maxWidth`, we need to compute exclusion zones line-by-line based on the sphere's current position and radius on the screen.
-*   **Implementation steps:**
-    1.  **Calculate 2D Sphere Radius:** In addition to tracking `spherePosition2D` (the X, Y screen coordinates), project a point at the edge of the sphere (e.g., `position.clone().add(new THREE.Vector3(radius, 0, 0))`) to determine the 2D radius in pixels on the screen.
-    2.  **Line-by-Line Intersection Logic:** Inside the text rendering logic (using `@chenglou/pretext`), we must determine where each line falls on the Y-axis.
-    3.  **Exclusion Calculation:** For each line at `lineY`:
-        *   Check if `lineY` falls within the sphere's vertical bounds: `Math.abs(lineY - sphereY) < radius2D`.
-        *   If it does, calculate the horizontal slice (chord) of the sphere at that Y-coordinate: `chordWidth = Math.sqrt(radius2D**2 - (lineY - sphereY)**2)`.
-        *   The sphere acts as an obstacle spanning `[sphereX - chordWidth - padding, sphereX + chordWidth + padding]`.
-    4.  **Adjusting Line Layout:**
-        *   If the sphere is overlapping a text column on a specific line, adjust the `maxWidth` or `x` offset for that specific line.
-        *   For instance, if the sphere is on the left side of the column, push the starting `x` coordinate of the text line to the right (`sphereX + chordWidth`) and reduce its available width.
-        *   If the sphere is in the middle of a column, the layout engine may need to split the line into two separate text blocks (one on the left, one on the right), or push all text to the side with the most available space.
-    5.  **Integration with Pretext:** Depending on the capabilities of `@chenglou/pretext`, pass this dynamic exclusion zone array to its layout function on every frame/update. If it doesn't natively support dynamic per-line obstacles, implement a wrapper around `pretext.layout` that measures words and manually breaks lines when they encounter the calculated 2D exclusion zone.
-
-## 4. Execution Order
-
-1.  Apply CSS updates to make the text white and verify layering (`z-index`).
-2.  Implement the camera frustum intersection math in `Scene.jsx` to dynamically size and position the `Panel` mesh on load and window resize.
-3.  Update the sphere tracking to pass both 2D center coordinates and 2D pixel radius to the text overlay.
-4.  Rewrite the `TextColumn` logic to calculate per-line intersections and dynamically adjust the positioning/width of individual text lines, utilizing `pretext` for word measurement and wrapping.
+## Safety and Regression Checks
+- **No changes to `App.jsx`**: The `TextOverlay` and `TextColumn` components must remain completely untouched to guarantee no disruption to the text layout system.
+- **Dependency verification**: `@react-three/drei` is already in use (for `PerspectiveCamera`), so `useGLTF` and `useAnimations` are readily available.
+- **Model Preloading**: Add `useGLTF.preload(gooseModelUrl)` outside the component to prevent any stuttering when the model first renders.

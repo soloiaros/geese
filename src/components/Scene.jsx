@@ -1,27 +1,52 @@
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { PerspectiveCamera } from '@react-three/drei'
+import { PerspectiveCamera, useGLTF, useAnimations } from '@react-three/drei'
 import { useState, useRef, useEffect } from 'react'
 import * as THREE from 'three'
+import gooseModelUrl from '../assets/3d/goose.glb'
 
-function Sphere({ targetPosition, setSpherePosition2D }) {
-  const ref = useRef()
+function Goose({ targetPosition, setSpherePosition2D }) {
+  const groupRef = useRef()
+  const { scene, animations } = useGLTF(gooseModelUrl)
+  const { actions, names } = useAnimations(animations, groupRef)
 
   useFrame(({ camera }, delta) => {
-    if (ref.current) {
+    if (groupRef.current) {
       // Organically move towards the target position
       const targetVec = new THREE.Vector3(targetPosition[0], targetPosition[1], targetPosition[2]);
-      ref.current.position.lerp(targetVec, 5 * delta);
+      
+      const currentPos = groupRef.current.position.clone();
+      const direction = new THREE.Vector3().subVectors(targetVec, currentPos);
+      const distance = direction.length();
+
+      groupRef.current.position.lerp(targetVec, 5 * delta);
+
+      const actionName = names[0];
+      const action = actionName ? actions[actionName] : null;
+
+      if (distance > 0.001) {
+        const angle = Math.atan2(direction.x, direction.z);
+        const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+        groupRef.current.quaternion.slerp(targetQuaternion, 10 * delta);
+
+        if (action && !action.isRunning()) {
+          action.play();
+        }
+      } else {
+        if (action && action.isRunning()) {
+          action.stop();
+        }
+      }
 
       if (setSpherePosition2D) {
-        // Project the sphere's actual 3D position to 2D normalized device coordinates (NDC)
-        const vec = new THREE.Vector3().copy(ref.current.position);
+        // Project the actual 3D position to 2D normalized device coordinates (NDC)
+        const vec = new THREE.Vector3().copy(groupRef.current.position);
         vec.project(camera);
         
         // Calculate screen space radius
-        // The sphere has radius 0.5 in 3D space
+        // Use 0.5 as radius3D to maintain exactly the same text wrapping as before
         const radius3D = 0.5;
         // Project a point at the edge of the sphere to find the 2D radius
-        const edgePoint = new THREE.Vector3(ref.current.position.x + radius3D, ref.current.position.y, ref.current.position.z);
+        const edgePoint = new THREE.Vector3(groupRef.current.position.x + radius3D, groupRef.current.position.y, groupRef.current.position.z);
         edgePoint.project(camera);
         // Distance in NDC space (width of screen is 2)
         const radiusNDC = Math.abs(edgePoint.x - vec.x);
@@ -32,10 +57,9 @@ function Sphere({ targetPosition, setSpherePosition2D }) {
   })
 
   return (
-    <mesh ref={ref} position={[0, 0.5, 0]}>
-      <sphereGeometry args={[0.5, 32, 32]} />
-      <meshStandardMaterial color="#c084fc" />
-    </mesh>
+    <group ref={groupRef} position={[0, 0.5, 0]}>
+      <primitive object={scene} />
+    </group>
   )
 }
 
@@ -105,7 +129,9 @@ export default function Scene({ setSpherePosition2D }) {
       <directionalLight position={[10, 10, 5]} intensity={1} />
 
       <Panel setTargetPosition={setTargetPosition} />
-      <Sphere targetPosition={targetPosition} setSpherePosition2D={setSpherePosition2D} />
+      <Goose targetPosition={targetPosition} setSpherePosition2D={setSpherePosition2D} />
     </Canvas>
   )
 }
+
+useGLTF.preload(gooseModelUrl)
