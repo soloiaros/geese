@@ -2,6 +2,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { PerspectiveCamera, useGLTF, useAnimations, Center } from '@react-three/drei'
 import { useState, useRef, useEffect } from 'react'
 import * as THREE from 'three'
+
 import gooseModelUrl from '../assets/3d/goose.glb'
 
 function Goose({ targetPosition, setSpherePosition2D }) {
@@ -11,39 +12,52 @@ function Goose({ targetPosition, setSpherePosition2D }) {
 
   useFrame(({ camera }, delta) => {
     if (groupRef.current) {
-      // Organically move towards the target position
       const targetVec = new THREE.Vector3(targetPosition[0], targetPosition[1], targetPosition[2]);
+      const currentPos = groupRef.current.position;
+      const distance = currentPos.distanceTo(targetVec);
       
-      const currentPos = groupRef.current.position.clone();
-      const direction = new THREE.Vector3().subVectors(targetVec, currentPos);
-      const distance = direction.length();
-
-      groupRef.current.position.lerp(targetVec, 5 * delta);
-
-      const actionName = names[0];
-      const action = actionName ? actions[actionName] : null;
-
-      if (distance > 0.001) {
-        const angle = Math.atan2(direction.x, direction.z);
+      const MAX_SPEED = 2.3; 
+      
+      if (distance > 0.005) {
+        const moveVec = new THREE.Vector3().subVectors(targetVec, currentPos);
+        const desiredSpeed = distance * 5.0;
+        const actualSpeed = Math.min(desiredSpeed, MAX_SPEED);
+        const step = Math.min(distance, actualSpeed * delta);
+        
+        moveVec.normalize();
+        
+        // Calculate angle. Goose needs to face the direction of movement.
+        const angle = Math.atan2(moveVec.x, moveVec.z);
         const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
         groupRef.current.quaternion.slerp(targetQuaternion, 10 * delta);
 
-        if (action && !action.isRunning()) {
-          action.play();
+        moveVec.multiplyScalar(step);
+        groupRef.current.position.add(moveVec);
+        
+        if (names.length > 0) {
+          const action = actions[names[0]];
+          if (action) {
+            action.play();
+            action.paused = false;
+          }
         }
       } else {
-        if (action && action.isRunning()) {
-          action.stop();
+        if (names.length > 0) {
+          const action = actions[names[0]];
+          if (action) {
+            action.reset();
+            action.stop();
+          }
         }
       }
 
       if (setSpherePosition2D) {
-        // Project the actual 3D position to 2D normalized device coordinates (NDC)
+        // Project the sphere's actual 3D position to 2D normalized device coordinates (NDC)
         const vec = new THREE.Vector3().copy(groupRef.current.position);
         vec.project(camera);
         
         // Calculate screen space radius
-        // Use 0.5 as radius3D to maintain exactly the same text wrapping as before
+        // The sphere has radius 0.5 in 3D space
         const radius3D = 0.5;
         // Project a point at the edge of the sphere to find the 2D radius
         const edgePoint = new THREE.Vector3(groupRef.current.position.x + radius3D, groupRef.current.position.y, groupRef.current.position.z);
@@ -59,11 +73,13 @@ function Goose({ targetPosition, setSpherePosition2D }) {
   return (
     <group ref={groupRef} position={[0, 0.5, 0]}>
       <Center>
-        <primitive object={scene} />
+      <primitive object={scene} />
       </Center>
     </group>
   )
 }
+
+useGLTF.preload(gooseModelUrl)
 
 function Panel({ setTargetPosition }) {
   const { camera, size } = useThree()
@@ -135,5 +151,3 @@ export default function Scene({ setSpherePosition2D }) {
     </Canvas>
   )
 }
-
-useGLTF.preload(gooseModelUrl)
