@@ -1,5 +1,4 @@
 import React, { useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { useFBX, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -19,7 +18,8 @@ export default function GrassField({ width, depth }) {
 
   // Determine number of instances based on area to keep density consistent
   const area = width * depth
-  const count = Math.max(1, Math.floor(area * 30)) // density multiplier
+  // Increase density significantly for a bushy look
+  const count = Math.max(1, Math.floor(area * 150)) // 5x original 30
   const halfCount = Math.floor(count / 2)
 
   const [matrices0, setMatrices0] = React.useState([])
@@ -35,7 +35,8 @@ export default function GrassField({ width, depth }) {
         (Math.random() - 0.5) * depth
       )
       dummy0.rotation.y = Math.random() * Math.PI * 2
-      const scale = 0.4 + Math.random() * 0.4
+      // Larger grass scale for thick bushy chunks
+      const scale = 1.2 + Math.random() * 1.5
       dummy0.scale.set(scale, scale, scale)
       dummy0.updateMatrix()
       arr0.push(dummy0.matrix.clone())
@@ -50,7 +51,7 @@ export default function GrassField({ width, depth }) {
         (Math.random() - 0.5) * depth
       )
       dummy1.rotation.y = Math.random() * Math.PI * 2
-      const scale = 0.4 + Math.random() * 0.4
+      const scale = 1.2 + Math.random() * 1.5
       dummy1.scale.set(scale, scale, scale)
       dummy1.updateMatrix()
       arr1.push(dummy1.matrix.clone())
@@ -66,62 +67,24 @@ export default function GrassField({ width, depth }) {
   const mesh0Ref = useRef()
   const mesh1Ref = useRef()
 
-  const customUniformsRef = useRef({
-    uTime: { value: 0 }
-  })
-
-  useFrame((state) => {
-    if (customUniformsRef.current) {
-      customUniformsRef.current.uTime.value = state.clock.elapsedTime
-    }
-  })
-
   useEffect(() => {
-    if (mesh0Ref.current) {
+    if (mesh0Ref.current && matrices0.length > 0) {
       matrices0.forEach((m, i) => mesh0Ref.current.setMatrixAt(i, m))
       mesh0Ref.current.instanceMatrix.needsUpdate = true
     }
-    if (mesh1Ref.current) {
+    if (mesh1Ref.current && matrices1.length > 0) {
       matrices1.forEach((m, i) => mesh1Ref.current.setMatrixAt(i, m))
       mesh1Ref.current.instanceMatrix.needsUpdate = true
     }
   }, [matrices0, matrices1])
 
   const onBeforeCompile = (shader) => {
-    shader.uniforms.uTime = customUniformsRef.current.uTime
-    shader.vertexShader = `
-      uniform float uTime;
-      ${shader.vertexShader}
-    `
     shader.vertexShader = shader.vertexShader.replace(
       '#include <beginnormal_vertex>',
       `
       #include <beginnormal_vertex>
       // Ghibli style soft normals (pointing straight up)
       objectNormal = vec3(0.0, 1.0, 0.0);
-      `
-    )
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <begin_vertex>',
-      `
-      #include <begin_vertex>
-
-      // Calculate world position for wind effect
-      vec4 windWorldPos = modelMatrix * instanceMatrix * vec4(position, 1.0);
-
-      // Wind animation (only affect top vertices by multiplying with position.y)
-      // Multiply by position.y to keep roots fixed to ground
-      float windPower = 0.15;
-      float windFrequency = 1.5;
-
-      // Add some variation based on world position X and Z
-      float windOffset = windWorldPos.x * 0.2 + windWorldPos.z * 0.2;
-      float wind = sin(uTime * windFrequency + windOffset) * windPower;
-
-      // Apply wind displacement
-      // Note: In local space for InstancedMesh with panel rotated by PI/2, y is up
-      transformed.x += wind * position.y;
-      transformed.z += wind * position.y * 0.5;
       `
     )
   }
