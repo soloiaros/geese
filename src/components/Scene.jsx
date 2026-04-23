@@ -7,6 +7,7 @@ import gooseModelUrl from '../assets/3d/goose.glb'
 
 function Goose({ targetPosition, setSpherePosition2D }) {
   const groupRef = useRef()
+  const velocityRef = useRef(new THREE.Vector3(0, 0, 0))
   const { scene, animations } = useGLTF(gooseModelUrl)
   const { actions, names } = useAnimations(animations, groupRef)
 
@@ -14,26 +15,40 @@ function Goose({ targetPosition, setSpherePosition2D }) {
     if (groupRef.current) {
       const targetVec = new THREE.Vector3(targetPosition[0], targetPosition[1], targetPosition[2]);
       const currentPos = groupRef.current.position;
-      const distance = currentPos.distanceTo(targetVec);
+      
+      const toTarget = new THREE.Vector3().subVectors(targetVec, currentPos);
+      const distance = toTarget.length();
       
       const MAX_SPEED = 2.3; 
+      const desiredVelocity = toTarget.clone();
       
       if (distance > 0.005) {
-        const moveVec = new THREE.Vector3().subVectors(targetVec, currentPos);
-        const desiredSpeed = distance * 5.0;
-        const actualSpeed = Math.min(desiredSpeed, MAX_SPEED);
-        const step = Math.min(distance, actualSpeed * delta);
-        
-        moveVec.normalize();
-        
-        // Calculate angle. Goose needs to face the direction of movement.
-        const angle = Math.atan2(moveVec.x, moveVec.z);
+        const desiredSpeed = Math.min(distance * 5.0, MAX_SPEED);
+        desiredVelocity.normalize().multiplyScalar(desiredSpeed);
+      } else {
+        desiredVelocity.set(0, 0, 0);
+      }
+
+      // Smoothly interpolate current velocity towards desired velocity for organic turns
+      velocityRef.current.lerp(desiredVelocity, 5 * delta);
+
+      const step = velocityRef.current.clone().multiplyScalar(delta);
+      if (distance > 0.001 && step.length() >= distance) {
+        // Prevent overshooting and wobbling by snapping to the exact target
+        groupRef.current.position.copy(targetVec);
+        velocityRef.current.set(0, 0, 0);
+      } else {
+        groupRef.current.position.add(step);
+      }
+
+      const currentSpeed = velocityRef.current.length();
+      
+      if (currentSpeed > 0.01) {
+        // Calculate angle. Goose needs to face its current velocity direction.
+        const angle = Math.atan2(velocityRef.current.x, velocityRef.current.z);
         const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
         groupRef.current.quaternion.slerp(targetQuaternion, 10 * delta);
 
-        moveVec.multiplyScalar(step);
-        groupRef.current.position.add(moveVec);
-        
         if (names.length > 0) {
           const action = actions[names[0]];
           if (action) {
@@ -42,6 +57,7 @@ function Goose({ targetPosition, setSpherePosition2D }) {
           }
         }
       } else {
+        velocityRef.current.set(0, 0, 0);
         if (names.length > 0) {
           const action = actions[names[0]];
           if (action) {
