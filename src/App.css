@@ -27,6 +27,8 @@
   align-items: center;
   padding: 40px;
   box-sizing: border-box;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* We will dynamically position text blocks later */
