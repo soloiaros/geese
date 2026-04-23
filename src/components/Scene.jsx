@@ -1,5 +1,5 @@
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { PerspectiveCamera, useGLTF, useAnimations } from '@react-three/drei'
+import { PerspectiveCamera, useGLTF, useAnimations, Center } from '@react-three/drei'
 import { useState, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import gooseModelUrl from '../assets/3d/goose.glb'
@@ -58,7 +58,9 @@ function Goose({ targetPosition, setSpherePosition2D }) {
 
   return (
     <group ref={groupRef} position={[0, 0.5, 0]}>
-      <primitive object={scene} />
+      <Center>
+        <primitive object={scene} />
+      </Center>
     </group>
   )
 }
