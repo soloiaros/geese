@@ -1,94 +1,52 @@
-# Implementation Plan: Interactive 3D Web Page
+# Implementation Plan: Interactive 3D Web Page - Phase 2
 
-This document outlines the step-by-step implementation of the interactive 3D web page, featuring a 3D scene with a floating panel, an organically moving sphere, and dynamic text layout using the `pretext` library.
+This document outlines the implementation plan for the second phase of the interactive 3D web page, focusing on precise 3D plane positioning, text visibility, and dynamic text wrapping around a 3D object using the `pretext` library.
 
-## Technology Stack
+## 1. Text Visibility and Layering
 
-*   **Build Tool & Framework:** Vite + React (Already initialized).
-*   **3D Library:** **React Three Fiber (R3F)** (`@react-three/fiber`) and **Three.js** (`three`).
-    *   *Why R3F?* It provides a declarative, component-based approach to Three.js that integrates seamlessly with React state and effects. It handles the render loop, scene management, and raycasting out of the box. Crucially, swapping out primitive shapes (like our sphere and panel) for complex, animated `.gltf` or `.glb` models later is incredibly straightforward using R3F's `useGLTF` and `@react-three/drei` helpers.
-*   **3D Helpers:** `@react-three/drei` (For easy camera controls, environment setup, and utility components).
-*   **Animation/Interpolation:** Three.js built-in math (`THREE.MathUtils.damp3`) or `framer-motion-3d` for the organic movement. We will use `MathUtils.damp3` inside a `useFrame` hook for lightweight, spring-like organic movement.
-*   **Text Layout:** `pretext` npm module (as requested, for layout manipulation based on the sphere's position).
+**Goal:** Ensure the text is pure white and clearly visible above the 3D scene.
 
----
+*   **Action:** Update the CSS for the text container (e.g., `.text-overlay`) and the text components.
+*   **Implementation:**
+    *   Set the text color explicitly to white: `color: #ffffff;`.
+    *   Ensure the `.text-overlay` has a higher `z-index` than the canvas container.
+    *   Optionally add a subtle `text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.8);` to guarantee the white text remains legible even if the 3D sphere passes directly behind it and shares a light color.
 
-## Step-by-Step Implementation
+## 2. Precise Panel Positioning (Frustum Alignment)
 
-### Step 1: Install Dependencies
-First, we need to install the necessary 3D and text manipulation libraries.
+**Goal:** Position the 3D panel so its farthest points exactly match the top-left and top-right corners of the screen. The closest points will naturally stretch beyond the screen limits on the X-axis due to perspective.
 
-```bash
-npm install three @react-three/fiber @react-three/drei
-npm install pretext
-```
+*   **Concept:** We need to calculate the exact dimensions and position of a plane on the XZ axis (`Y=0`) so that its far edge aligns with the top of the camera's view frustum.
+*   **Implementation steps:**
+    1.  **Raycasting from Screen Corners:** Inside the `Scene` component, use the camera to unproject the Normalized Device Coordinates (NDC) of the screen's top corners (`[-1, 1, 0]` and `[1, 1, 0]`) and bottom corners (`[-1, -1, 0]` and `[1, -1, 0]`).
+    2.  **Intersection with Ground Plane:** Cast mathematical rays from the camera's position through these unprojected points to see where they intersect the `Y=0` plane.
+    3.  **Calculate Dimensions:**
+        *   The distance between the top-left and top-right intersections determines the exact **width** of the panel's far edge.
+        *   The Z-distance between the top intersections and bottom intersections determines the **depth** (height) of the panel.
+    4.  **Apply to Geometry:** Create a standard `<planeGeometry args={[width, depth]}>` (or use a custom trapezoid/custom plane if we want a standard rectangle that stretches out) and position it so the far edge rests exactly on the Z-coordinate of the top intersections.
+    5.  *Result:* The plane will perfectly fill the screen vertically, its top edge will perfectly align with the top corners, and its bottom edge will be wider than the screen.
 
-### Step 2: Global Styles & Dark Theme Setup
-Update `src/index.css` and `src/App.css` to ensure the application takes up the full screen and uses a dark color palette.
+## 3. Dynamic Text Wrapping (Avoid Intersection)
 
-*   Set `body`, `html`, and `#root` to `height: 100vh`, `width: 100vw`, `margin: 0`, `overflow: hidden`.
-*   Set a dark background color (e.g., `#121212` or `#0a0a0a`).
-*   Ensure the canvas container is positioned absolutely or takes up the full dimensions behind the text layer.
+**Goal:** The text must wrap around the sphere. The sphere should never intersect the text; instead, the text lines should adjust their layout to avoid the sphere's 2D projected area.
 
-### Step 3: Setting up the 3D Canvas and Camera
-Create a new component (e.g., `Scene.jsx`) to house the R3F `<Canvas>`.
+*   **Concept:** Instead of just shrinking the entire column's `maxWidth`, we need to compute exclusion zones line-by-line based on the sphere's current position and radius on the screen.
+*   **Implementation steps:**
+    1.  **Calculate 2D Sphere Radius:** In addition to tracking `spherePosition2D` (the X, Y screen coordinates), project a point at the edge of the sphere (e.g., `position.clone().add(new THREE.Vector3(radius, 0, 0))`) to determine the 2D radius in pixels on the screen.
+    2.  **Line-by-Line Intersection Logic:** Inside the text rendering logic (using `@chenglou/pretext`), we must determine where each line falls on the Y-axis.
+    3.  **Exclusion Calculation:** For each line at `lineY`:
+        *   Check if `lineY` falls within the sphere's vertical bounds: `Math.abs(lineY - sphereY) < radius2D`.
+        *   If it does, calculate the horizontal slice (chord) of the sphere at that Y-coordinate: `chordWidth = Math.sqrt(radius2D**2 - (lineY - sphereY)**2)`.
+        *   The sphere acts as an obstacle spanning `[sphereX - chordWidth - padding, sphereX + chordWidth + padding]`.
+    4.  **Adjusting Line Layout:**
+        *   If the sphere is overlapping a text column on a specific line, adjust the `maxWidth` or `x` offset for that specific line.
+        *   For instance, if the sphere is on the left side of the column, push the starting `x` coordinate of the text line to the right (`sphereX + chordWidth`) and reduce its available width.
+        *   If the sphere is in the middle of a column, the layout engine may need to split the line into two separate text blocks (one on the left, one on the right), or push all text to the side with the most available space.
+    5.  **Integration with Pretext:** Depending on the capabilities of `@chenglou/pretext`, pass this dynamic exclusion zone array to its layout function on every frame/update. If it doesn't natively support dynamic per-line obstacles, implement a wrapper around `pretext.layout` that measures words and manually breaks lines when they encounter the calculated 2D exclusion zone.
 
-*   **Camera:** Configure a `PerspectiveCamera` positioned to look down at a roughly 45-degree angle.
-    *   Example position: `[0, 10, 10]` looking at `[0, 0, 0]`.
-*   **Lighting:** Add ambient light and a directional light to make the 3D objects distinguishable from the dark background. The objects should have slightly lighter materials (e.g., `#333333` for the panel, `#666666` or a subtle glowing color for the sphere).
+## 4. Execution Order
 
-### Step 4: Creating the Floating Panel and Sphere
-Inside the `Scene`, create two primary mesh components:
-
-*   **Floating Panel:** A flat `<boxGeometry>` or `<planeGeometry>` rotated to lay flat on the XZ axis (`rotation={[-Math.PI / 2, 0, 0]}`). Give it a dark, slightly reflective material.
-*   **The Sphere:** A `<sphereGeometry>` placed slightly above the panel.
-
-### Step 5: Implementing Raycasting & Organic Movement
-R3F handles raycasting natively through pointer events on meshes.
-
-1.  **State Management:** Create a React ref or state to store the target position of the sphere (defaulting to the center `[0, radius, 0]`).
-2.  **Pointer Events:** Attach an `onPointerMove` event to the **Floating Panel** mesh.
-    *   When the cursor moves over the panel, extract the exact 3D intersection point (`event.point`).
-    *   Update the target position with this point (keeping the Y-axis constant so the sphere rolls/slides *on top* of the panel).
-3.  **Organic Motion:** Use the `useFrame` hook on the Sphere component.
-    *   On every frame, smoothly interpolate (lerp or damp) the sphere's current position towards the target position using `THREE.MathUtils.damp3(ref.current.position, targetPosition, lambda, delta)`. This creates the organic, "following NPC" feel.
-4.  **Preserving Position:** Because we only update the target position on `onPointerMove` over the panel, when the cursor leaves the panel, the target position remains at the last known intersection, and the sphere will stay there.
-
-### Step 6: Integrating the `pretext` Module
-Layer the text UI on top of the 3D canvas using CSS (absolute positioning, z-index).
-
-1.  **Text Overlay:** Create an HTML overlay component that renders columns of dummy text.
-2.  **Tracking the Sphere (2D Projection):** To make the `pretext` layout react to the sphere, we need the sphere's position in 2D screen space.
-    *   We can project the 3D sphere position to 2D screen coordinates using the camera projection matrix, or simply track the 2D mouse position if it closely maps to the sphere's target.
-    *   R3F's `useThree` hook allows us to access the camera and project the 3D vector to normalized device coordinates (NDC), which we then map to pixel coordinates.
-3.  **Applying `pretext`:** Pass these 2D coordinates (or the active repelling radius) into the `pretext` API to calculate the text wrapping/displacement around the active area.
-
-### Step 7: Preparing for Future 3D Models
-To ensure the project is ready for actual animated 3D models later:
-
-*   Keep the logic for the "Agent" (currently the sphere) abstracted in its own component (e.g., `<Agent position={...} />`).
-*   When models are ready, you will replace `<mesh><sphereGeometry /></mesh>` with the loaded model:
-    ```jsx
-    import { useGLTF, useAnimations } from '@react-three/drei';
-
-    export function Agent(props) {
-      const { scene, animations } = useGLTF('/path/to/character.glb');
-      const { actions } = useAnimations(animations, scene);
-      
-      // Play walking animation when distance to target is > threshold
-      // Play idle animation when distance is near 0
-      
-      return <primitive object={scene} {...props} />;
-    }
-    ```
-*   The organic movement logic (`MathUtils.damp3`) will remain exactly the same; it will just move the `<primitive>` wrapper instead of a basic mesh.
-
----
-
-## Execution Order
-1. Setup global CSS and dark theme.
-2. Build the basic R3F Canvas with Lighting and Camera.
-3. Render the static Panel and Sphere meshes.
-4. Implement `onPointerMove` raycasting and `useFrame` smooth interpolation.
-5. Create the HTML overlay.
-6. Connect the Sphere's screen-space position to the `pretext` layout logic.
+1.  Apply CSS updates to make the text white and verify layering (`z-index`).
+2.  Implement the camera frustum intersection math in `Scene.jsx` to dynamically size and position the `Panel` mesh on load and window resize.
+3.  Update the sphere tracking to pass both 2D center coordinates and 2D pixel radius to the text overlay.
+4.  Rewrite the `TextColumn` logic to calculate per-line intersections and dynamically adjust the positioning/width of individual text lines, utilizing `pretext` for word measurement and wrapping.
