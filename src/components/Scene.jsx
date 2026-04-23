@@ -1,9 +1,11 @@
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
-import { PerspectiveCamera, useGLTF, useAnimations, Center } from '@react-three/drei'
-import { useState, useRef, useEffect } from 'react'
+import { PerspectiveCamera, useGLTF, useTexture, useAnimations, Center } from '@react-three/drei'
 import * as THREE from 'three'
 
 import gooseModelUrl from '../assets/3d/goose.glb'
+import grassAlbedoUrl from '../assets/3d/grass_textures/Grass_Albedo.png'
+import GrassField from './GrassField.jsx'
 
 function Goose({ targetPosition, setSpherePosition2D }) {
   const groupRef = useRef()
@@ -52,8 +54,9 @@ function Goose({ targetPosition, setSpherePosition2D }) {
         if (names.length > 0) {
           const action = actions[names[0]];
           if (action) {
-            action.play();
-            action.paused = false;
+            if (!action.isRunning()) {
+               action.play();
+            }
           }
         }
       } else {
@@ -61,7 +64,6 @@ function Goose({ targetPosition, setSpherePosition2D }) {
         if (names.length > 0) {
           const action = actions[names[0]];
           if (action) {
-            action.reset();
             action.stop();
           }
         }
@@ -101,6 +103,17 @@ function Panel({ setTargetPosition }) {
   const { camera, size } = useThree()
   const [panelProps, setPanelProps] = useState({ args: [10, 10], position: [0, 0, 0] })
 
+  const grassAlbedo = useTexture(grassAlbedoUrl)
+
+  const clonedAlbedo = useMemo(() => {
+    const clone = grassAlbedo.clone()
+    clone.wrapS = THREE.RepeatWrapping
+    clone.wrapT = THREE.RepeatWrapping
+    return clone
+  }, [grassAlbedo])
+
+  clonedAlbedo.repeat.set(panelProps.args[0] / 2, panelProps.args[1] / 2)
+
   useEffect(() => {
     camera.updateMatrixWorld();
     
@@ -130,9 +143,17 @@ function Panel({ setTargetPosition }) {
       
       const centerZ = (zFar + zNear) / 2;
       
-      setPanelProps({
-        args: [width, depth],
-        position: [0, 0, centerZ]
+      // Use requestAnimationFrame to avoid synchronous state updates during effect execution
+      requestAnimationFrame(() => {
+        setPanelProps(prev => {
+          if (prev.args[0] === width && prev.args[1] === depth && prev.position[2] === centerZ) {
+            return prev;
+          }
+          return {
+            args: [width, depth],
+            position: [0, 0, centerZ]
+          };
+        });
       });
     }
   }, [camera, size]);
@@ -148,7 +169,8 @@ function Panel({ setTargetPosition }) {
       onPointerMove={handlePointerMove}
     >
       <planeGeometry args={panelProps.args} />
-      <meshStandardMaterial color="#2e303a" roughness={0.8} />
+      <meshStandardMaterial map={clonedAlbedo} roughness={0.8} />
+      <GrassField width={panelProps.args[0]} depth={panelProps.args[1]} />
     </mesh>
   )
 }
