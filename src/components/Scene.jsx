@@ -10,8 +10,8 @@ export default function Scene({ setSpherePosition2D }) {
 
   return (
     <Canvas>
-      <PerspectiveCamera makeDefault position={[0, 5, 5]} onUpdate={(c) => c.lookAt(0, 0, 0)} fov={50} />
-      <ambientLight intensity={0.5} />
+      <PerspectiveCamera makeDefault position={[0, 5, 5]} onUpdate={(c) => c.lookAt(0, 0, 0)} fov={25} />
+      <ambientLight intensity={1.5} />
       <directionalLight position={[10, 10, 5]} intensity={1} />
 
       <GroundAndGrass setTargetPosition={setTargetPosition} />
