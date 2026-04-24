@@ -109,9 +109,12 @@ function Panel({ setTargetPosition }) {
     const clone = grassAlbedo.clone()
     clone.wrapS = THREE.RepeatWrapping
     clone.wrapT = THREE.RepeatWrapping
+    // Ensure the albedo color is treated correctly in standard material
+    clone.colorSpace = THREE.SRGBColorSpace
     return clone
   }, [grassAlbedo])
 
+  // Tiling adjustment
   clonedAlbedo.repeat.set(panelProps.args[0] / 2, panelProps.args[1] / 2)
 
   useEffect(() => {
@@ -143,7 +146,6 @@ function Panel({ setTargetPosition }) {
       
       const centerZ = (zFar + zNear) / 2;
       
-      // Use requestAnimationFrame to avoid synchronous state updates during effect execution
       requestAnimationFrame(() => {
         setPanelProps(prev => {
           if (prev.args[0] === width && prev.args[1] === depth && prev.position[2] === centerZ) {
@@ -169,7 +171,7 @@ function Panel({ setTargetPosition }) {
       onPointerMove={handlePointerMove}
     >
       <planeGeometry args={panelProps.args} />
-      <meshStandardMaterial map={clonedAlbedo} roughness={0.8} />
+      <meshStandardMaterial map={clonedAlbedo} roughness={0.8} color="#ffffff" />
       <GrassField width={panelProps.args[0]} depth={panelProps.args[1]} />
     </mesh>
   )
@@ -179,11 +181,11 @@ export default function Scene({ setSpherePosition2D }) {
   const [targetPosition, setTargetPosition] = useState([0, 0.5, 0])
 
   return (
-    <Canvas>
+    <Canvas gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}>
       <PerspectiveCamera makeDefault position={[0, 5, 5]} onUpdate={(c) => c.lookAt(0, 0, 0)} fov={50} />
-      <ambientLight intensity={0.3} />
+      <ambientLight intensity={0.4} />
       <hemisphereLight skyColor="#ffffff" groundColor="#444444" intensity={0.6} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <directionalLight position={[10, 10, 5]} intensity={1.5} />
 
       <Panel setTargetPosition={setTargetPosition} />
       <Goose targetPosition={targetPosition} setSpherePosition2D={setSpherePosition2D} />
