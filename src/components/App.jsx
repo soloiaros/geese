@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Scene from './Scene.jsx'
 import TextOverlay from './TextOverlay.jsx'
+import Loader from './Loader.jsx'
 import '../App.css'
 
 function App() {
@@ -8,6 +9,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <Loader />
       <div className="hero-section">
         <div className="canvas-container">
           <Scene setSpherePosition2D={setSpherePosition2D} />
