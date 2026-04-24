@@ -22,6 +22,10 @@
   background: var(--bg, #121212);
 }
 
+.hero-section:hover {
+  cursor: url('./assets/pointer-classy.png'), pointer;
+}
+
 .canvas-container {
   position: absolute;
   top: 0;

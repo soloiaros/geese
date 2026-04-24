@@ -19,11 +19,16 @@ export default function Goose({ targetPosition, setSpherePosition2D }) {
       const toTarget = new THREE.Vector3().subVectors(targetVec, currentPos);
       const distance = toTarget.length();
       
-      const MAX_SPEED = 2.3; 
+      const MAX_SPEED = 1.5; 
       const desiredVelocity = toTarget.clone();
       
-      if (distance > 0.005) {
-        const desiredSpeed = Math.min(distance * 5.0, MAX_SPEED);
+      // Calculate smooth ease-out speed
+      let desiredSpeed = 0;
+      if (distance > 0.05) {
+        // Taper speed based on distance for a smooth, gradual stop
+        const t = Math.min(distance / 2.0, 1.0);
+        const easeOut = t * (2 - t); // Quadratic ease-out
+        desiredSpeed = Math.max(easeOut * MAX_SPEED, 0.1);
         desiredVelocity.normalize().multiplyScalar(desiredSpeed);
       } else {
         desiredVelocity.set(0, 0, 0);
@@ -53,7 +58,9 @@ export default function Goose({ targetPosition, setSpherePosition2D }) {
           const action = actions[names[0]];
           if (action) {
             action.play();
-            action.paused = false;
+            // Scale animation speed based on movement speed
+            const targetTimeScale = Math.max(0.3, currentSpeed / MAX_SPEED);
+            action.setEffectiveTimeScale(THREE.MathUtils.lerp(action.getEffectiveTimeScale(), targetTimeScale, 10 * delta));
           }
         }
       } else {
@@ -61,8 +68,13 @@ export default function Goose({ targetPosition, setSpherePosition2D }) {
         if (names.length > 0) {
           const action = actions[names[0]];
           if (action) {
-            action.reset();
-            action.stop();
+            // Smoothly wind down the animation to a freeze, instead of snapping to start
+            const currentScale = action.getEffectiveTimeScale();
+            if (currentScale > 0.01) {
+              action.setEffectiveTimeScale(THREE.MathUtils.lerp(currentScale, 0, 2 * delta));
+            } else {
+              action.setEffectiveTimeScale(0);
+            }
           }
         }
       }
