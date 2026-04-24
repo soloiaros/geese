@@ -4,7 +4,7 @@ import * as THREE from 'three'
 
 import Grass from './Grass'
 
-export default function GroundAndGrass({ setTargetPosition }) {
+export default function GroundAndGrass({ setTargetPosition, addGoose }) {
   const { camera, size } = useThree()
   const [panelProps, setPanelProps] = useState({ args: [10, 10], position: [0, 0, 0] })
 
@@ -48,6 +48,12 @@ export default function GroundAndGrass({ setTargetPosition }) {
     setTargetPosition([e.point.x, 0.5, e.point.z])
   }
 
+  const handleClick = (e) => {
+    if (addGoose) {
+      addGoose([e.point.x, 0.5, e.point.z]);
+    }
+  }
+
   // Calculate density based on visible area
   const area = panelProps.args[0] * panelProps.args[1];
   const count = Math.min(Math.floor(area * 500), 100000); // 500 blades per sq unit, max 100k
@@ -59,6 +65,7 @@ export default function GroundAndGrass({ setTargetPosition }) {
         rotation={[-Math.PI / 2, 0, 0]}
         position={panelProps.position}
         onPointerMove={handlePointerMove}
+        onClick={handleClick}
       >
         <planeGeometry args={panelProps.args} />
         {/* Adjusted ground color to blend with grass base */}
