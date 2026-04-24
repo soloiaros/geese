@@ -1,10 +1,13 @@
 :root {
-  --text: #9ca3af;
+  --text: #e5dfca;
   --text-h: #f3f4f6;
   --bg: #121212;
   --border: #2e303a;
-  --code-bg: #1f2028;
-  --accent: #c084fc;
+  --grass-dark: #435503;
+  --earth: #927635;
+  --grass-muted: #63702e;
+  --grass-bright: #969633;
+  --light-themed: #e5dfca;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
