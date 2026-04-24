@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import TextColumn from './TextColumn'
 
-const DUMMY_TEXT = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
-
-const DUMMY_PARAGRAPHS = [
-  DUMMY_TEXT,
-  "Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.",
-  "Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue.",
-  DUMMY_TEXT
-]
-const FULL_TEXT = DUMMY_PARAGRAPHS.join('\n\n');
+const QUOTES = [
+  { text: "Your story must reflect change over time. Stories that fail to reflect change over time are known as anecdotes.", citation: "Matthew Dicks, Storyworthy" },
+  { text: "[]…and this is our job - to find the simplicity that lives at the heart of complexity.", citation: "Sandi Metz" },
+  { text: "The seed of every habit is a single, tiny decision. But as that decision is repeated, a habit sprouts and grows stronger. Roots entrench themselves and branches grow. The task of breaking a bad habit is like uprooting a powerful oak within us. And the task of building a good habit is like cultivating a delicate flower one day at a time.", citation: "James Clear, Atomic Habits" },
+  { text: "Honk.", citation: "Unknown Goose" },
+  { text: "My number one goal is to make content that I'd myself be willing to watch.", citation: "Marques Brownlee" },
+  { text: "Differences of habit and language are nothing at all if our aims are identical and our hearts are open.", citation: "Albus Dumbledore" },
+];
 
 export default function TextOverlay({ spherePosition2D }) {
   const containerRef = useRef(null)
@@ -51,8 +50,9 @@ export default function TextOverlay({ spherePosition2D }) {
   }
 
   // Scale the text dynamically so it fits in smaller hero section boxes
-  const fontSize = Math.max(10, Math.min(18, Math.min(dimensions.width / 60, dimensions.height / 35)));
-  const font = `${fontSize}px system-ui, 'Segoe UI', Roboto, sans-serif`
+  const fontSize = Math.max(10, Math.min(18, dimensions.width / 50));
+  const font = `bold ${fontSize}px 'Helvetica', 'Segoe UI', Roboto, sans-serif`
+  const citationFont = `bold ${fontSize * 0.85}px 'Helvetica', 'Segoe UI', Roboto, sans-serif`
   const lineHeight = fontSize * 1.45
 
   const numColumns = 3;
@@ -65,13 +65,19 @@ export default function TextOverlay({ spherePosition2D }) {
       <div style={{ display: 'flex', gap: gap, maxWidth: '100%' }}>
         {Array.from({ length: numColumns }).map((_, colIndex) => {
           const colCenterX = 40 + colIndex * (colWidth + gap) + colWidth / 2;
+          
+          // Divide quotes among columns
+          const quotesPerCol = Math.ceil(QUOTES.length / numColumns);
+          const colQuotes = QUOTES.slice(colIndex * quotesPerCol, (colIndex + 1) * quotesPerCol);
+
           return (
             <div key={colIndex} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <TextColumn
-                text={FULL_TEXT}
+                quotes={colQuotes}
                 maxWidth={colWidth}
                 lineHeight={lineHeight}
                 font={font}
+                citationFont={citationFont}
                 colCenterX={colCenterX}
                 colStartY={colStartY}
                 sphereInfo={sphereInfo}

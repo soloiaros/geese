@@ -1,18 +1,22 @@
 import { useMemo } from 'react'
 import { prepareWithSegments, layoutNextLineRange, materializeLineRange } from '@chenglou/pretext'
 
-export default function TextColumn({ text, maxWidth, lineHeight, font, colCenterX, colStartY, sphereInfo }) {
-  const prepared = useMemo(() => prepareWithSegments(text, font, { whiteSpace: 'pre-wrap' }), [text, font])
+export default function TextColumn({ quotes, maxWidth, lineHeight, font, citationFont, colCenterX, colStartY, sphereInfo }) {
+  const preparedQuotes = useMemo(() => {
+    return quotes.map(q => ({
+      main: prepareWithSegments(`"${q.text}"`, font, { whiteSpace: 'pre-wrap' }),
+      citation: prepareWithSegments(`(${q.citation})`, citationFont, { whiteSpace: 'pre-wrap' })
+    }));
+  }, [quotes, font, citationFont]);
 
   const lines = useMemo(() => {
-    if (!prepared) return [];
-    let cursor = { segmentIndex: 0, graphemeIndex: 0 }
-    let currentY = 0
-    const resultLines = []
+    if (!preparedQuotes || preparedQuotes.length === 0) return [];
+    
+    let currentY = 0;
+    const resultLines = [];
 
-    while (true) {
-      const absY = colStartY + currentY;
-      
+    const getLineConstraints = (y) => {
+      const absY = colStartY + y;
       let lineWidth = maxWidth;
       let lineX = 0;
 
@@ -48,28 +52,75 @@ export default function TextColumn({ text, maxWidth, lineHeight, font, colCenter
           }
         }
       }
-      
-      if (lineWidth <= 0) {
+      return { lineX, lineWidth };
+    };
+
+    for (const pq of preparedQuotes) {
+      // Layout main text
+      let cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      while (true) {
+        const { lineX, lineWidth } = getLineConstraints(currentY);
+        
+        if (lineWidth <= 0) {
+          currentY += lineHeight;
+          continue;
+        }
+
+        const range = layoutNextLineRange(pq.main, cursor, lineWidth);
+        if (range === null) break;
+
+        const line = materializeLineRange(pq.main, range);
+        resultLines.push({ text: line.text, x: lineX, y: currentY, width: line.width, isCitation: false });
+        
+        cursor = range.end;
         currentY += lineHeight;
-        continue;
       }
 
-      const range = layoutNextLineRange(prepared, cursor, lineWidth)
-      if (range === null) break
+      // Layout citation
+      cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      while (true) {
+        const { lineX, lineWidth } = getLineConstraints(currentY);
+        
+        if (lineWidth <= 0) {
+          currentY += lineHeight;
+          continue;
+        }
 
-      const line = materializeLineRange(prepared, range)
-      resultLines.push({ text: line.text, x: lineX, y: currentY, width: line.width })
-      
-      cursor = range.end
-      currentY += lineHeight
+        const range = layoutNextLineRange(pq.citation, cursor, lineWidth);
+        if (range === null) break;
+
+        const line = materializeLineRange(pq.citation, range);
+        
+        // Right-align citation within the available line width
+        const citationX = lineX + Math.max(0, lineWidth - line.width);
+        
+        resultLines.push({ text: line.text, x: citationX, y: currentY, width: line.width, isCitation: true });
+        
+        cursor = range.end;
+        currentY += lineHeight;
+      }
+
+      currentY += lineHeight * 3; // extra gap between quotes
     }
     return resultLines;
-  }, [prepared, maxWidth, lineHeight, sphereInfo, colCenterX, colStartY])
+  }, [preparedQuotes, maxWidth, lineHeight, sphereInfo, colCenterX, colStartY]);
 
   return (
-    <div style={{ width: maxWidth, height: lines.length ? lines[lines.length - 1].y + lineHeight : 0, position: 'relative', overflow: 'hidden' }}>
+    <div style={{ width: maxWidth, height: lines.length ? lines[lines.length - 1].y + lineHeight : 0, position: 'relative', overflow: 'hidden', color: 'var(--text-h)' }}>
       {lines.map((line, i) => (
-        <div key={i} style={{ position: 'absolute', top: line.y, left: line.x, width: line.width, whiteSpace: 'pre' }}>
+        <div 
+          key={i} 
+          style={{ 
+            position: 'absolute', 
+            top: line.y, 
+            left: line.x, 
+            width: line.width, 
+            whiteSpace: 'pre',
+            font: line.isCitation ? citationFont : font,
+            color: 'var(--text-h)',
+            opacity: line.isCitation ? 0.7 : 1
+          }}
+        >
           {line.text}
         </div>
       ))}
