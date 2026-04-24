@@ -24,6 +24,13 @@ export default function Goose({
   // Clone scene so multiple geese can have independent animations and materials
   const scene = useMemo(() => clone(originalScene), [originalScene])
   
+  // Generate a random, persistent offset for this goose to avoid perfect syncing
+  const randomOffset = useMemo(() => {
+    const angle = Math.random() * Math.PI * 2;
+    const r = 0.5 + Math.random() * 0.5; // Radius between 0.5 and 1.0
+    return { x: Math.cos(angle) * r, z: Math.sin(angle) * r };
+  }, []);
+
   const { actions, names } = useAnimations(animations, groupRef)
 
   useEffect(() => {
@@ -64,13 +71,11 @@ export default function Goose({
       }
       groupRef.current.scale.set(renderScale, renderScale, renderScale);
 
-      // Calculate offset based on index and totalGeese to stop in a radius around the cursor
-      const radius = 0.5; // The radius around the cursor
-      const angle = totalGeese > 0 ? (index / totalGeese) * Math.PI * 2 : 0;
-      const xOffset = Math.cos(angle) * radius;
-      const zOffset = Math.sin(angle) * radius;
-      
-      const targetVec = new THREE.Vector3(targetPosition[0] + xOffset, targetPosition[1], targetPosition[2] + zOffset);
+      const targetVec = new THREE.Vector3(
+        targetPosition[0] + randomOffset.x, 
+        targetPosition[1], 
+        targetPosition[2] + randomOffset.z
+      );
       const currentPos = groupRef.current.position;
       
       const toTarget = new THREE.Vector3().subVectors(targetVec, currentPos);
@@ -106,9 +111,19 @@ export default function Goose({
       const currentSpeed = velocityRef.current.length();
       
       if (currentSpeed > 0.01) {
-        // Calculate angle. Goose needs to face its current velocity direction.
-        const movementAngle = Math.atan2(velocityRef.current.x, velocityRef.current.z);
-        const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), movementAngle);
+        // Face velocity direction when moving to prevent sliding, but start facing the cursor when entering the defined radius
+        const cursorVec = new THREE.Vector3(targetPosition[0], groupRef.current.position.y, targetPosition[2]);
+        const toCursor = new THREE.Vector3().subVectors(cursorVec, groupRef.current.position);
+        const distanceToCursor = toCursor.length();
+
+        let lookAngle;
+        if (distanceToCursor < 1 && toCursor.lengthSq() > 0.001) {
+          lookAngle = Math.atan2(toCursor.x, toCursor.z);
+        } else {
+          lookAngle = Math.atan2(velocityRef.current.x, velocityRef.current.z);
+        }
+        
+        const targetQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), lookAngle);
         groupRef.current.quaternion.slerp(targetQuaternion, 10 * delta);
 
         if (names.length > 0) {
