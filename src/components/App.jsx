@@ -7,12 +7,14 @@ function App() {
   const [spherePosition2D, setSpherePosition2D] = useState(null)
 
   return (
-    <>
-      <div className="canvas-container">
-        <Scene setSpherePosition2D={setSpherePosition2D} />
+    <div className="app-container">
+      <div className="hero-section">
+        <div className="canvas-container">
+          <Scene setSpherePosition2D={setSpherePosition2D} />
+        </div>
+        <TextOverlay spherePosition2D={spherePosition2D} />
       </div>
-      <TextOverlay spherePosition2D={spherePosition2D} />
-    </>
+    </div>
   )
 }
 

@@ -4,6 +4,24 @@
   flex-direction: column;
 }
 
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-section {
+  position: relative;
+  width: var(--hero-width, 80vw);
+  height: var(--hero-height, 65vh);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border, #2e303a);
+  background: var(--bg, #121212);
+}
+
 .canvas-container {
   position: absolute;
   top: 0;

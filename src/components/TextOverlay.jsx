@@ -17,13 +17,28 @@ export default function TextOverlay({ spherePosition2D }) {
   const [colStartY, setColStartY] = useState(0)
 
   useEffect(() => {
-    const handleResize = () => {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight })
-      setColStartY(100)
-    }
-    window.addEventListener('resize', handleResize)
-    handleResize()
-    return () => window.removeEventListener('resize', handleResize)
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setDimensions({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight
+        });
+      }
+    });
+
+    observer.observe(containerRef.current);
+
+    setDimensions({
+      width: containerRef.current.offsetWidth,
+      height: containerRef.current.offsetHeight
+    });
+    
+    // Adjust start Y based on padding
+    setColStartY(40);
+
+    return () => observer.disconnect();
   }, [])
 
   let sphereInfo = null;
@@ -35,16 +50,18 @@ export default function TextOverlay({ spherePosition2D }) {
     sphereInfo = { x: pixelX, y: pixelY, r: pixelR };
   }
 
-  const font = "18px system-ui, 'Segoe UI', Roboto, sans-serif"
-  const lineHeight = 18 * 1.45
+  // Scale the text dynamically so it fits in smaller hero section boxes
+  const fontSize = Math.max(10, Math.min(18, Math.min(dimensions.width / 60, dimensions.height / 35)));
+  const font = `${fontSize}px system-ui, 'Segoe UI', Roboto, sans-serif`
+  const lineHeight = fontSize * 1.45
 
   const numColumns = 3;
-  const gap = 40;
-  const availableWidth = dimensions.width - 80;
-  const colWidth = Math.max(150, (availableWidth - gap * (numColumns - 1)) / numColumns);
+  const gap = dimensions.width < 600 ? 20 : 40;
+  const availableWidth = dimensions.width - 80; // Assuming 40px left and right padding
+  const colWidth = Math.max(100, (availableWidth - gap * (numColumns - 1)) / numColumns);
 
   return (
-    <div className="text-overlay" ref={containerRef} style={{ alignItems: 'flex-start', paddingTop: '100px' }}>
+    <div className="text-overlay" ref={containerRef} style={{ alignItems: 'flex-start', paddingTop: '40px' }}>
       <div style={{ display: 'flex', gap: gap, maxWidth: '100%' }}>
         {Array.from({ length: numColumns }).map((_, colIndex) => {
           const colCenterX = 40 + colIndex * (colWidth + gap) + colWidth / 2;
