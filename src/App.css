@@ -18,7 +18,7 @@
   height: var(--hero-height, 65vh);
   border-radius: 20px;
   overflow: hidden;
-  border: 1px solid var(--border, #2e303a);
+  border: 3px solid var(--earth, #2e303a);
   background: var(--bg, #121212);
 }
 

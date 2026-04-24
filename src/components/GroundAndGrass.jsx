@@ -55,6 +55,7 @@ export default function GroundAndGrass({ setTargetPosition }) {
   return (
     <group>
       <mesh
+        receiveShadow
         rotation={[-Math.PI / 2, 0, 0]}
         position={panelProps.position}
         onPointerMove={handlePointerMove}
