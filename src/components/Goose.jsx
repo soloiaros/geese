@@ -117,7 +117,7 @@ export default function Goose({
         const distanceToCursor = toCursor.length();
 
         let lookAngle;
-        if (distanceToCursor < 1 && toCursor.lengthSq() > 0.001) {
+        if (distanceToCursor < 0.5 && toCursor.lengthSq() > 0.001) {
           lookAngle = Math.atan2(toCursor.x, toCursor.z);
         } else {
           lookAngle = Math.atan2(velocityRef.current.x, velocityRef.current.z);
