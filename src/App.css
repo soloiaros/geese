@@ -4,6 +4,28 @@
   flex-direction: column;
 }
 
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-section {
+  position: relative;
+  width: var(--hero-width, 80vw);
+  height: var(--hero-height, 65vh);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 3px solid var(--earth, #2e303a);
+  background: var(--bg, #121212);
+}
+
+.hero-section:hover {
+  cursor: url('./assets/pointer-classy.png'), pointer;
+}
+
 .canvas-container {
   position: absolute;
   top: 0;
@@ -29,6 +51,46 @@
   box-sizing: border-box;
   color: #ffffff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.loader-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loader-content {
+  width: 200px;
+  text-align: center;
+}
+
+.loader-bar-container {
+  width: 100%;
+  height: 4px;
+  background: rgba(46, 48, 58, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.loader-bar {
+  height: 100%;
+  background: var(--earth);
+  transition: width 0.3s ease-out;
+}
+
+.loader-text {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--border);
+  margin: 0;
 }
 
 /* We will dynamically position text blocks later */
