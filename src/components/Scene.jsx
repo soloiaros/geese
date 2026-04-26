@@ -32,7 +32,7 @@ export default function Scene({ setSpherePosition2D }) {
 
   return (
     <Canvas shadows>
-      <PerspectiveCamera makeDefault position={[0, 5, 5]} onUpdate={(c) => c.lookAt(0, 0, 0)} fov={25} />
+      <PerspectiveCamera makeDefault position={[0, 5, 5]} onUpdate={(c) => c.lookAt(0, 0, 0)} fov={35} />
       
       <Environment preset="forest" />
       <ambientLight intensity={0.2} color="#cce0ff" />

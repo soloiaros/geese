@@ -28,7 +28,7 @@ export default function Goose({
   const randomOffset = useMemo(() => {
     const angle = Math.random() * Math.PI * 2;
     const r = 0.5 + Math.random() * 0.5; // Radius between 0.5 and 1.0
-    return { x: Math.cos(angle) * r, z: Math.sin(angle) * r };
+    return { x: Math.abs(Math.cos(angle)) * r, z: Math.abs(Math.sin(angle)) * r };
   }, []);
 
   const { actions, names } = useAnimations(animations, groupRef)
@@ -71,26 +71,35 @@ export default function Goose({
       }
       groupRef.current.scale.set(renderScale, renderScale, renderScale);
 
-      const targetVec = new THREE.Vector3(
-        targetPosition[0] + randomOffset.x, 
-        targetPosition[1], 
-        targetPosition[2] + randomOffset.z
-      );
       const currentPos = groupRef.current.position;
+      
+      const targetVec = new THREE.Vector3(
+        currentPos.x >= targetPosition[0] ? targetPosition[0] + randomOffset.x : targetPosition[0] - randomOffset.x, 
+        targetPosition[1] * 1.1, 
+        currentPos.z >= targetPosition[2] ? targetPosition[2] + randomOffset.z : targetPosition[2] - randomOffset.z,
+      );
       
       const toTarget = new THREE.Vector3().subVectors(targetVec, currentPos);
       const distance = toTarget.length();
+
+      const directTargetVec = new THREE.Vector3(targetPosition[0], targetPosition[1] * 1.1, targetPosition[2]);
+      const bufferDistance = new THREE.Vector3().subVectors(directTargetVec, targetVec).length();
       
       const MAX_SPEED = 1.5; 
       const desiredVelocity = toTarget.clone();
       
+      let tooClose = false;
+      if (distance < 0.01 || (distance <= bufferDistance && velocityRef.current.lengthSq() < 0.0001)) {
+        tooClose = true;
+      }
+
       // Calculate smooth ease-out speed
       let desiredSpeed = 0;
-      if (distance > 0.05) {
+      if (!tooClose && distance > 0.01) {
         // Taper speed based on distance for a smooth, gradual stop
         const t2 = Math.min(distance / 2.0, 1.0);
         const easeOut = t2 * (2 - t2); // Quadratic ease-out
-        desiredSpeed = Math.max(easeOut * MAX_SPEED, 0.1);
+        desiredSpeed = Math.max(easeOut * MAX_SPEED, 0.2);
         desiredVelocity.normalize().multiplyScalar(desiredSpeed);
       } else {
         desiredVelocity.set(0, 0, 0);
@@ -100,7 +109,7 @@ export default function Goose({
       velocityRef.current.lerp(desiredVelocity, 5 * delta);
 
       const step = velocityRef.current.clone().multiplyScalar(delta);
-      if (distance > 0.001 && step.length() >= distance) {
+      if (step.length() >= distance || distance < 0.01) {
         // Prevent overshooting and wobbling by snapping to the exact target
         groupRef.current.position.copy(targetVec);
         velocityRef.current.set(0, 0, 0);
@@ -110,7 +119,7 @@ export default function Goose({
 
       const currentSpeed = velocityRef.current.length();
       
-      if (currentSpeed > 0.01) {
+      if (currentSpeed > 0.01 && !tooClose) {
         // Face velocity direction when moving to prevent sliding, but start facing the cursor when entering the defined radius
         const cursorVec = new THREE.Vector3(targetPosition[0], groupRef.current.position.y, targetPosition[2]);
         const toCursor = new THREE.Vector3().subVectors(cursorVec, groupRef.current.position);
@@ -136,9 +145,7 @@ export default function Goose({
           }
         }
       } else {
-        velocityRef.current.set(0, 0, 0);
-
-        // Face the cursor when stopped
+        // Face the cursor when stopped or tooClose
         const cursorVec = new THREE.Vector3(targetPosition[0], groupRef.current.position.y, targetPosition[2]);
         const toCursor = new THREE.Vector3().subVectors(cursorVec, groupRef.current.position);
         if (toCursor.lengthSq() > 0.001) {
