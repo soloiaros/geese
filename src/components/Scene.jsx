@@ -6,9 +6,20 @@ import { EffectComposer, Bloom, DepthOfField, Vignette, HueSaturation } from '@r
 import GroundAndGrass from './GroundAndGrass'
 import Goose from './Goose'
 
+import GooseSound1 from '../assets/audio/honk-sound-1.mp3';
+import GooseSound2 from '../assets/audio/honk-sound-2.wav';
+import GooseSound3 from '../assets/audio/honk-sound-3.wav';
+
 export default function Scene({ setGeesePositions }) {
   const [targetPosition, setTargetPosition] = useState([0, 0.5, 0])
   const [geese, setGeese] = useState([{ id: Date.now(), initialPosition: [0, 0.5, 0], isExiting: false }])
+
+  const [honkCooldown, setHonkCooldown] = useState(false);
+  const soundCooldownTime = 1000;
+  function stopSoundEffects() {
+    setHonkCooldown(true);
+    setTimeout(() => {setHonkCooldown(false)}, soundCooldownTime);
+  }
 
   const addGoose = (position) => {
     setGeese((prev) => {
@@ -32,9 +43,6 @@ export default function Scene({ setGeesePositions }) {
     });
   }
 
-  const activeGeeseCount = geese.filter((g) => !g.isExiting).length;
-  let activeIndex = 0;
-
   return (
     <Canvas shadows>
       <OrthographicCamera makeDefault position={[0, 3, 3]} onUpdate={(c) => c.lookAt(0, 0, 0)} zoom={130} />
@@ -50,7 +58,6 @@ export default function Scene({ setGeesePositions }) {
 
       <GroundAndGrass setTargetPosition={setTargetPosition} addGoose={addGoose} />
       {geese.map((goose) => {
-        const index = goose.isExiting ? 0 : activeIndex++;
         return (
           <Goose 
             key={goose.id} 
@@ -58,11 +65,12 @@ export default function Scene({ setGeesePositions }) {
             targetPosition={targetPosition} 
             setGeesePositions={setGeesePositions} 
             initialPosition={goose.initialPosition}
-            index={index}
-            totalGeese={activeGeeseCount}
             isExiting={goose.isExiting}
             onExitComplete={() => removeGoose(goose.id)}
             spawnAnimationDuration={0.8}
+            soundPath={[GooseSound1, GooseSound2, GooseSound3].at(Math.floor(Math.random() * 3))}
+            onHonk={stopSoundEffects}
+            honkCooldown={honkCooldown}
           />
         );
       })}

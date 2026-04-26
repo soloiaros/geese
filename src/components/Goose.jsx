@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF, useAnimations, Center } from '@react-three/drei'
 import * as THREE from 'three'
@@ -11,11 +11,12 @@ export default function Goose({
   targetPosition, 
   setGeesePositions, 
   initialPosition, 
-  index, 
-  totalGeese,
   isExiting = false,
   onExitComplete,
-  spawnAnimationDuration = 0.8
+  spawnAnimationDuration = 0.8,
+  soundPath: initialSoundPath,
+  onHonk,
+  honkCooldown,
 }) {
   const groupRef = useRef()
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0))
@@ -24,6 +25,14 @@ export default function Goose({
   
   // Clone scene so multiple geese can have independent animations and materials
   const scene = useMemo(() => clone(originalScene), [originalScene])
+
+  const [soundPath, setSoundPath] = useState(initialSoundPath);
+  const honk = document.createElement('audio');
+  honk.src = soundPath;
+
+  useEffect(() => {
+    honk.play();
+  }, [])
   
   // Generate a random, persistent offset for this goose to avoid perfect syncing
   const randomOffset = useMemo(() => {
@@ -199,7 +208,13 @@ export default function Goose({
   })
 
   return (
-    <group ref={groupRef} position={[0, 0.5, 0]} onClick={(e) => { e.stopPropagation(); console.log('click!') }}>
+    <group ref={groupRef} position={[0, 0.5, 0]} onClick={(e) => {
+      e.stopPropagation();
+      if (!honkCooldown) {
+        honk.play();
+        onHonk();
+      }
+      }}>
       <mesh visible={false}>
         <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
