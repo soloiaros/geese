@@ -38,6 +38,11 @@ html, body, #root {
   box-sizing: border-box;
 }
 
+button {
+  all: unset;
+  cursor: pointer;
+}
+
 #root {
   position: relative;
   display: flex;

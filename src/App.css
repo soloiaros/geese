@@ -13,32 +13,75 @@
 }
 
 .hero-section {
+  box-sizing: border-box;
   position: relative;
   width: var(--hero-width, 80vw);
-  height: var(--hero-height, 65vh);
-  border-radius: 20px;
-  overflow: hidden;
-  border: 3px solid var(--earth, #2e303a);
-  background: var(--bg, #121212);
-}
-
-.hero-section:hover {
-  cursor: url('./assets/pointer-classy.png'), pointer;
+  height: var(--hero-height, 80vh);
+  overflow-y: hidden;
 }
 
 .canvas-container {
+  box-sizing: border-box;
+  overflow: hidden;
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: var(--hero-scene-height, 65vh);
   z-index: 1; /* behind text */
   pointer-events: auto; /* Allow interactions with 3D scene */
+  border-radius: 20px;
+  border: 3px solid var(--earth, #2e303a);
+  background: var(--bg, #121212);
+  anchor-name: --canvas-container;
+}
+
+.canvas-container:hover {
+  cursor: url('./assets/pointer-classy.png'), pointer;
+}
+
+.mute-honk-button {
+  position: absolute;
+  position-anchor: --canvas-container;
+  width: 1.5rem;
+  height: 1.5rem;
+  bottom: calc(anchor(top) + 10px);
+  right: calc(anchor(right) + 10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    border-color: rgba(0, 0, 0, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    #CrossingLine,
+    #wave1,
+    #wave2,
+    #wave3,
+    #wave4,
+    #wave5 {
+      transition: all 0.475s linear(0, 0.532 20.8%, 1 37.8%, 0.877 44.2%, 0.847 47.2%, 0.838 50.1%, 0.846 52.8%, 0.869 55.6%, 1 65.5%, 0.965 69.4%, 0.954 73.1%, 0.961 76.5%, 1 84.5%, 0.992 89.3%, 1);
+    }
+  }
 }
 
 .text-overlay {
   position: absolute;
-  top: 0;
+  position-anchor: --canvas-container;
+  top: anchor(top);
   left: 0;
   width: 100%;
   height: 100%;

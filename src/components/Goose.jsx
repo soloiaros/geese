@@ -17,6 +17,7 @@ export default function Goose({
   soundPath: initialSoundPath,
   onHonk,
   honkCooldown,
+  isMuted = true,
 }) {
   const groupRef = useRef()
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0))
@@ -31,7 +32,7 @@ export default function Goose({
   honk.src = soundPath;
 
   useEffect(() => {
-    honk.play();
+    if (!isMuted) honk.play();
   }, [])
   
   // Generate a random, persistent offset for this goose to avoid perfect syncing
@@ -210,7 +211,7 @@ export default function Goose({
   return (
     <group ref={groupRef} position={[0, 0.5, 0]} onClick={(e) => {
       e.stopPropagation();
-      if (!honkCooldown) {
+      if (!honkCooldown && !isMuted) {
         honk.play();
         onHonk();
       }
