@@ -199,7 +199,7 @@ export default function Goose({
   })
 
   return (
-    <group ref={groupRef} position={[0, 0.5, 0]} onClick={(e) => e.stopPropagation()}>
+    <group ref={groupRef} position={[0, 0.5, 0]} onClick={(e) => { e.stopPropagation(); console.log('click!') }}>
       <mesh visible={false}>
         <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />

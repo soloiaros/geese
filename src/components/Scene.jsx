@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { PerspectiveCamera, Environment } from '@react-three/drei'
+import { OrthographicCamera, Environment } from '@react-three/drei'
 import { EffectComposer, Bloom, DepthOfField, Vignette, HueSaturation } from '@react-three/postprocessing'
 
 import GroundAndGrass from './GroundAndGrass'
@@ -37,7 +37,7 @@ export default function Scene({ setGeesePositions }) {
 
   return (
     <Canvas shadows>
-      <PerspectiveCamera makeDefault position={[0, 5, 5]} onUpdate={(c) => c.lookAt(0, 0, 0)} fov={35} />
+      <OrthographicCamera makeDefault position={[0, 3, 3]} onUpdate={(c) => c.lookAt(0, 0, 0)} zoom={130} />
       
       <Environment preset="forest" />
       <ambientLight intensity={0.2} color="#cce0ff" />
