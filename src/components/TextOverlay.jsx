@@ -10,7 +10,7 @@ const QUOTES = [
   { text: "Differences of habit and language are nothing at all if our aims are identical and our hearts are open.", citation: "Albus Dumbledore" },
 ];
 
-export default function TextOverlay({ spherePosition2D }) {
+export default function TextOverlay({ geesePositions }) {
   const containerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [colStartY, setColStartY] = useState(0)
@@ -40,14 +40,12 @@ export default function TextOverlay({ spherePosition2D }) {
     return () => observer.disconnect();
   }, [])
 
-  let sphereInfo = null;
-
-  if (spherePosition2D) {
-    const pixelX = (spherePosition2D.x + 1) / 2 * dimensions.width;
-    const pixelY = -(spherePosition2D.y - 1) / 2 * dimensions.height;
-    const pixelR = spherePosition2D.r ? (spherePosition2D.r * (dimensions.width / 2)) : 0;
-    sphereInfo = { x: pixelX, y: pixelY, r: pixelR };
-  }
+  const geeseInfo = Object.values(geesePositions).map(pos => {
+    const pixelX = (pos.x + 1) / 2 * dimensions.width;
+    const pixelY = -(pos.y - 1) / 2 * dimensions.height;
+    const pixelR = pos.r ? (pos.r * (dimensions.width / 2)) : 0;
+    return { x: pixelX, y: pixelY, r: pixelR };
+  });
 
   // Scale the text dynamically so it fits in smaller hero section boxes
   const fontSize = Math.max(10, Math.min(18, dimensions.width / 50));
@@ -80,7 +78,7 @@ export default function TextOverlay({ spherePosition2D }) {
                 citationFont={citationFont}
                 colCenterX={colCenterX}
                 colStartY={colStartY}
-                sphereInfo={sphereInfo}
+                geeseInfo={geeseInfo}
               />
             </div>
           )

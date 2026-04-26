@@ -7,8 +7,9 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils'
 import gooseModelUrl from '../assets/3d/goose.glb'
 
 export default function Goose({ 
+  id,
   targetPosition, 
-  setSpherePosition2D, 
+  setGeesePositions, 
   initialPosition, 
   index, 
   totalGeese,
@@ -75,14 +76,14 @@ export default function Goose({
       
       const targetVec = new THREE.Vector3(
         currentPos.x >= targetPosition[0] ? targetPosition[0] + randomOffset.x : targetPosition[0] - randomOffset.x, 
-        targetPosition[1] * 1.1, 
+        targetPosition[1] * 1.2, 
         currentPos.z >= targetPosition[2] ? targetPosition[2] + randomOffset.z : targetPosition[2] - randomOffset.z,
       );
       
       const toTarget = new THREE.Vector3().subVectors(targetVec, currentPos);
       const distance = toTarget.length();
 
-      const directTargetVec = new THREE.Vector3(targetPosition[0], targetPosition[1] * 1.1, targetPosition[2]);
+      const directTargetVec = new THREE.Vector3(targetPosition[0], targetPosition[1] * 1.2, targetPosition[2]);
       const bufferDistance = new THREE.Vector3().subVectors(directTargetVec, targetVec).length();
       
       const MAX_SPEED = 1.5; 
@@ -168,7 +169,7 @@ export default function Goose({
         }
       }
 
-      if (setSpherePosition2D && index === 0 && !isExiting) { // Only track the first goose for the text overlay
+      if (setGeesePositions && !isExiting) {
         // Project the sphere's actual 3D position to 2D normalized device coordinates (NDC)
         const vec = new THREE.Vector3().copy(groupRef.current.position);
         vec.project(camera);
@@ -182,7 +183,17 @@ export default function Goose({
         // Distance in NDC space (width of screen is 2)
         const radiusNDC = Math.abs(edgePoint.x - vec.x);
         
-        setSpherePosition2D({ x: vec.x, y: vec.y, r: radiusNDC * renderScale });
+        setGeesePositions(prev => ({
+          ...prev,
+          [id]: { x: vec.x, y: vec.y, r: radiusNDC * renderScale }
+        }));
+      } else if (setGeesePositions && isExiting) {
+        setGeesePositions(prev => {
+          if (!prev[id]) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
       }
     }
   })

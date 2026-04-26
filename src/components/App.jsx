@@ -5,16 +5,16 @@ import Loader from './Loader.jsx'
 import '../App.css'
 
 function App() {
-  const [spherePosition2D, setSpherePosition2D] = useState(null)
+  const [geesePositions, setGeesePositions] = useState({})
 
   return (
     <div className="app-container">
       <Loader />
       <div className="hero-section">
         <div className="canvas-container">
-          <Scene setSpherePosition2D={setSpherePosition2D} />
+          <Scene setGeesePositions={setGeesePositions} />
         </div>
-        <TextOverlay spherePosition2D={spherePosition2D} />
+        <TextOverlay geesePositions={geesePositions} />
       </div>
     </div>
   )

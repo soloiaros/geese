@@ -6,7 +6,7 @@ import { EffectComposer, Bloom, DepthOfField, Vignette, HueSaturation } from '@r
 import GroundAndGrass from './GroundAndGrass'
 import Goose from './Goose'
 
-export default function Scene({ setSpherePosition2D }) {
+export default function Scene({ setGeesePositions }) {
   const [targetPosition, setTargetPosition] = useState([0, 0.5, 0])
   const [geese, setGeese] = useState([{ id: Date.now(), initialPosition: [0, 0.5, 0], isExiting: false }])
 
@@ -25,6 +25,11 @@ export default function Scene({ setSpherePosition2D }) {
 
   const removeGoose = (id) => {
     setGeese((prev) => prev.filter((g) => g.id !== id));
+    setGeesePositions((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   const activeGeeseCount = geese.filter((g) => !g.isExiting).length;
@@ -49,8 +54,9 @@ export default function Scene({ setSpherePosition2D }) {
         return (
           <Goose 
             key={goose.id} 
+            id={goose.id}
             targetPosition={targetPosition} 
-            setSpherePosition2D={(!goose.isExiting && index === 0) ? setSpherePosition2D : null} 
+            setGeesePositions={setGeesePositions} 
             initialPosition={goose.initialPosition}
             index={index}
             totalGeese={activeGeeseCount}
