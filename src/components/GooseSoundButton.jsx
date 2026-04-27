@@ -1,6 +1,6 @@
 export default function GooseSoundButton ({ isMuted, onClick }) {
 
-    if (isMuted) {
+    if (!isMuted) {
         return (
             <button className="mute-honk-button" onClick={onClick}>
                 <svg width="1093" height="1024" viewBox="0 0 1093 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
