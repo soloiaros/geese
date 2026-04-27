@@ -76,8 +76,6 @@ export default function Scene({ setGeesePositions, isMuted }) {
           );
         })}
         <EffectComposer disableNormalPass>
-          <DepthOfField target={[0, 0.5, 0]} focalLength={0.02} bokehScale={2} height={960} />
-          <Bloom luminanceThreshold={0.7} luminanceSmoothing={0.1} intensity={0.2} />
           <HueSaturation hue={0.05} saturation={0.2} />
           <Vignette eskil={false} offset={0.1} darkness={0.5} />
         </EffectComposer>
